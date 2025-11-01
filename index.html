@@ -33,16 +33,8 @@
       z-index: 100;
     }
 
-    header img {
-      width: 60px;
-      height: 60px;
-      margin-right: 15px;
-    }
-
-    header h1 {
-      color: #ff2d00;
-      font-size: 2em;
-    }
+    header img { width: 60px; height: 60px; margin-right: 15px; }
+    header h1 { color: #ff2d00; font-size: 2em; }
 
     main {
       flex: 1;
@@ -69,39 +61,34 @@
 
     .subtitle { color: #ff4d3d; margin-bottom: 40px; display:block; font-size: 1.3em; }
 
-    .input-group {
-      margin-bottom: 25px;
-      text-align: left;
-      flex-shrink: 0;
-    }
-
-    label {
-      display: block;
-      color: #ff2d00;
-      font-weight: 500;
-      margin-bottom: 8px;
-      font-size: 1.1em;
-    }
-
-    input {
-      width: 100%;
-      padding: 18px 20px;
-      border: 1.5px solid #ff2d00;
-      border-radius: 10px;
-      font-size: 1.2em;
-      background: #111;
-      color: #fff;
-      font-family: inherit;
-      transition: all 0.2s ease;
-    }
-
-    input:focus {
-      outline: none;
-      border-color: #ff4d3d;
-      box-shadow: 0 0 12px #ff2d00;
-    }
-
+    .input-group { margin-bottom: 25px; text-align: left; flex-shrink: 0; }
+    label { display: block; color: #ff2d00; font-weight: 500; margin-bottom: 8px; font-size: 1.1em; }
+    input { width: 100%; padding: 18px 20px; border: 1.5px solid #ff2d00; border-radius: 10px; font-size: 1.2em; background: #111; color: #fff; font-family: inherit; transition: all 0.2s ease; }
+    input:focus { outline: none; border-color: #ff4d3d; box-shadow: 0 0 12px #ff2d00; }
     input::placeholder { color: #ff6660; }
+
+    /* remove number input arrows */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] { -moz-appearance: textfield; }
+
+    .error-msg {
+      color: #ff4d3d;
+      font-size: 1em;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .joined-msg {
+      color: #ff2d00;
+      font-size: 1.2em;
+      margin-top: 15px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
 
     button {
       width: 100%;
@@ -137,11 +124,7 @@
       right: 0;
     }
 
-    footer a {
-      color: #ff2d00;
-      text-decoration: none;
-    }
-
+    footer a { color: #ff2d00; text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
     @media (max-width: 640px) {
@@ -159,11 +142,14 @@
 
   <main>
     <div class="container">
-      <span class="subtitle">Join your game with bots</span>
+      <span class="subtitle">Flood your game with bots</span>
+
+      <div class="error-msg" id="pinError">Please enter a PIN exactly 7 digits long</div>
+      <div class="error-msg" id="amountError">Please choose a number between 1 and 50</div>
 
       <div class="input-group">
         <label for="pin">Game PIN</label>
-        <input id="pin" type="text" placeholder="Enter game PIN" autocomplete="off" />
+        <input id="pin" type="text" placeholder="Enter game PIN" maxlength="7" autocomplete="off" />
       </div>
 
       <div class="input-group">
@@ -171,7 +157,8 @@
         <input id="amount" type="number" min="1" max="50" placeholder="1-50" autocomplete="off" />
       </div>
 
-      <button id="joinBtn">Join Game</button>
+      <button id="joinBtn">Flood Game</button>
+      <div class="joined-msg" id="joinedMsg">Joined!</div>
     </div>
   </main>
 
@@ -181,15 +168,34 @@
 
   <script>
     const BACKEND_URL = 'https://7c5741f4-48b7-4a75-9a89-32d6eed18368-00-10g7gvwo8yiak.picard.replit.dev';
+    const joinBtn = document.getElementById('joinBtn');
+    const pinInput = document.getElementById('pin');
+    const amountInput = document.getElementById('amount');
+    const pinError = document.getElementById('pinError');
+    const amountError = document.getElementById('amountError');
+    const joinedMsg = document.getElementById('joinedMsg');
 
-    document.getElementById('joinBtn').onclick = async () => {
-      const pin = document.getElementById('pin').value;
-      const amount = document.getElementById('amount').value;
+    joinBtn.addEventListener('click', async () => {
+      const pin = pinInput.value.trim();
+      const amount = Number(amountInput.value);
 
-      if (!pin || !amount) { console.error('Enter PIN & number of bots'); return; }
-      if (amount < 1 || amount > 50) { console.error('Number of bots must be 1-50'); return; }
+      let hasError = false;
 
-      console.log('Joining game...');
+      // Errors only on click
+      if(pin.length !== 7) {
+        pinError.style.display = 'block';
+        hasError = true;
+      } else pinError.style.display = 'none';
+
+      if(amount < 1 || amount > 50) {
+        amountError.style.display = 'block';
+        hasError = true;
+      } else amountError.style.display = 'none';
+
+      if(hasError) return;
+
+      joinBtn.textContent = 'flooding...';
+
       try {
         const response = await fetch(`${BACKEND_URL}/join`, {
           method: 'POST',
@@ -197,19 +203,17 @@
           body: JSON.stringify({ pin, amount })
         });
         const result = await response.json();
-        if (response.ok && !result.error && !result.message) console.log('Success:', result);
-        else console.error('Error:', result);
+
+        // Show "Flooded!" with fade
+        joinedMsg.style.opacity = '1';
+        setTimeout(() => { joinedMsg.style.opacity = '0'; }, 2000);
+
+        console.log('Success:', result);
       } catch (err) {
         console.error('Connection Error:', err);
       }
-    };
 
-    document.getElementById('pin').addEventListener('keypress', e => {
-      if (e.key === 'Enter') document.getElementById('amount').focus();
-    });
-
-    document.getElementById('amount').addEventListener('keypress', e => {
-      if (e.key === 'Enter') document.getElementById('joinBtn').click();
+      joinBtn.textContent = 'flood Game';
     });
   </script>
 </body>
